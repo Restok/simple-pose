@@ -5,6 +5,8 @@ import os
 from data.Fit3DDataset import Fit3DDataset
 from sklearn.model_selection import train_test_split
 
+from data.Fit3DVideo import Fit3DVideo
+
 def read_video(vid_path):
     frames = []
     cap = cv2.VideoCapture(vid_path)
@@ -93,4 +95,22 @@ def get_datasets(reload_data=False, shuffle=True):
     train_frame_paths, test_frame_paths = train_test_split(frame_paths, test_size=0.2, shuffle=shuffle)
     train_dataset = Fit3DDataset(train_frame_paths, root_dir=root)
     test_dataset = Fit3DDataset(test_frame_paths, root_dir=root)
+    return train_dataset, test_dataset
+
+def get_video_datasets():
+    #videos are in data/fit3d_train/train/subj_name/videos/camera_name/action_name.mp4
+    #Get all video paths
+    data_root = 'data'
+    dataset_name = 'fit3d_train'
+    subset = 'train'
+    subj_names = os.listdir('%s/%s/%s' % (data_root, dataset_name, subset))
+    camera_name = '60457274'
+    video_paths = []
+    for subj_name in subj_names:
+        action_names = os.listdir('%s/%s/%s/%s/videos/%s' % (data_root, dataset_name, subset, subj_name, camera_name))
+        for action_name in action_names:
+            video_paths.append('%s/%s/%s/%s/videos/%s/%s' % (data_root, dataset_name, subset, subj_name, camera_name, action_name))
+    train_video_paths, test_video_paths = train_test_split(video_paths, test_size=0.2, shuffle=True)
+    train_dataset = Fit3DVideo(train_video_paths)
+    test_dataset = Fit3DVideo(test_video_paths)
     return train_dataset, test_dataset
