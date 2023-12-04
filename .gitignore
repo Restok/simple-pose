@@ -1,4 +1,5 @@
 /simplepose/data/fit3d_train
 /simplepose/data/processed
 /smplx
-__pycache__
+*__pycache__*
+*processed*
