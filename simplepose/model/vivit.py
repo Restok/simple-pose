@@ -94,8 +94,7 @@ class VivitEmbeddings(nn.Module):
         cls_tokens = self.cls_token.tile([batch_size, 1, 1])
 
         embeddings = torch.cat((cls_tokens, embeddings), dim=1)
-        print(embeddings.shape)
-        print(self.position_embeddings.shape)
+
         # add positional encoding to each token
         embeddings = embeddings + self.position_embeddings
 
