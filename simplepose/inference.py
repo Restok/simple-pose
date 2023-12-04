@@ -7,6 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from smplx_util import SMPLXHelper
 import imageio
+from PIL import Image
 model = mobilenet_v2(pretrained=False)
 model.classifier[1] = torch.nn.Linear(1280, 201)
 model = model.to('cuda')
@@ -16,7 +17,7 @@ model.eval()
 
 # load test data
 train_data, test_data = get_datasets(reload_data=False, shuffle=False)
-
+# test_loader = DataLoader(test_data, batch_size=32, shuffle=False)
 
 
 # inference
@@ -46,15 +47,18 @@ with torch.no_grad():
         camera_smplx_params = smplx_helper.get_world_smplx_params(smplx_params)
         camera_posed_data_smplx = smplx_helper.smplx_model(**camera_smplx_params)
         vertices = camera_posed_data_smplx.vertices.cpu().detach().numpy().squeeze()
-        
-        vertices_gt = camera_posed_data_smplx.vertices.cpu().detach().numpy().squeeze()
-        
-        rendered_image = smplx_helper.render(vertices, sample_frame.cpu(), camera_params, vertices_in_world=True) #numpy
+        joints = camera_posed_data_smplx.joints.cpu().detach()[:22].numpy()
+        joints_gt = camera_posed_data_smplx.joints.cpu().detach()[22:].numpy()
+        print(joints.shape)
+        print(joints_gt.shape)
 
-        
+        vertices_gt = camera_posed_data_smplx.vertices.cpu().detach().numpy().squeeze()
+        rendered_image = smplx_helper.render(vertices, sample_frame.cpu(), camera_params, vertices_in_world=True) #tensor
+        rendered_image = rendered_image.cpu().detach().numpy().squeeze()
+        rendered_image = (rendered_image*255).astype('uint8')
         gif_frames.append(rendered_image)
-        if i > 5:
-            break
+        # if i > 5:
+        break
         # plt.show()
     # save gif
     imageio.mimsave('inference.gif', gif_frames, fps=5)

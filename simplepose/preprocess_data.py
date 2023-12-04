@@ -4,7 +4,7 @@ import cv2
 import os
 from data.Fit3DDataset import Fit3DDataset
 from sklearn.model_selection import train_test_split
-
+import torch
 from data.Fit3DVideo import Fit3DVideo
 
 def read_video(vid_path):
@@ -51,19 +51,24 @@ def read_data(data_root, dataset_name, subset, subj_name, action_name, camera_na
 def getSMPLXParams(prediction):
     global_orient = prediction[:, :9].reshape(-1, 3, 3)
     body_pose = prediction[:, 9:198].reshape(-1, 21, 3, 3)
-    transl = prediction[:, 198:]
+    transl = prediction[:, 198:].reshape(-1, 3)
     return global_orient, body_pose, transl
 
-def getCameraParams(metadata):
-    subj_name = metadata['subj_name']
-    action_name = metadata['action_name']
-    camera_name = metadata['camera_name']
+def getCameraParams(metadatas):
     data_root = 'data/fit3d_train'
     subset = 'train'
-    param_path = '%s/%s/%s/camera_parameters/%s/%s.json' % (data_root, subset, subj_name, camera_name, action_name)
-    with open(param_path) as f:
-        params = json.load(f)
-    return params
+    all_params = []
+    batches = len(metadatas['subj_name'])
+    for i in range(batches):
+        subj_name = metadatas['subj_name'][i]
+        action_name = metadatas['action_name'][i]
+        camera_name = metadatas['camera_name'][i]
+        param_path = '%s/%s/%s/camera_parameters/%s/%s.json' % (data_root, subset, subj_name, camera_name, action_name)
+        with open(param_path) as f:
+            params = json.load(f)  
+            all_params.append(params)
+
+    return all_params
 
 def load_data(process_frames=False):
     data_root = 'data'

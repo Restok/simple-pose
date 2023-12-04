@@ -38,10 +38,11 @@ smplx_cfg = {'ext': 'npz',
              'use_face_contour': True}
 
 class SMPLXHelper:
-    def __init__(self, Models_Path=None, load_renderer=True):
+    def __init__(self, Models_Path=None, load_renderer=True, device='cuda'):
         self.Models_Path = Models_Path
         self.cfg = smplx_cfg
         self.smplx_model = build_layer(self.Models_Path, **self.cfg)
+        self.smplx_model = self.smplx_model.to(device)
         self.image_shape = (900, 900)
         if load_renderer:
             self.mesh_rasterizer = self.get_smplx_rasterizer()
