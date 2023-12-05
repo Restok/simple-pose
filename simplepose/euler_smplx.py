@@ -4,13 +4,22 @@ from preprocess_data import *
 import os
 import multiprocessing as mp
 
-def rot_mat_to_euler(R):
-    a = np.arcsin(R[0,2])
-    b = np.arctan2(R[0,1]/-np.cos(a), R[0,0]/np.cos(a))
-    c = np.arctan2(R[1,2]/-np.cos(a), R[2,2]/np.cos(a))
-    if abs(R[0,0])<10^-16 or abs(R[2,2])<10^-16:
-        print("Matrix has infinite Solutions")
-    return c,a,b
+def rot_mat_to_euler(rot_mats):
+    # a = np.arcsin(R[0,2])
+    # b = np.arctan2(R[0,1]/-np.cos(a), R[0,0]/np.cos(a))
+    # c = np.arctan2(R[1,2]/-np.cos(a), R[2,2]/np.cos(a))
+    # if abs(R[0,0])<10^-16 or abs(R[2,2])<10^-16:
+    #     print("Matrix has infinite Solutions")
+    # return c,a,b
+    # Calculates rotation matrix to euler angles
+    # Careful for extreme cases of eular angles like [0.0, pi, 0.0]
+  rot_mats = torch.tensor(rot_mats)
+  sy = torch.sqrt(rot_mats[0, 0] * rot_mats[0, 0] +
+                  rot_mats[1, 0] * rot_mats[1, 0])
+  res= torch.atan2(-rot_mats[2, 0], sy)
+  print(res)   
+  return torch.atan2(-rot_mats[2, 0], sy)
+
 
 subjects = ["s03", "s04", "s05", "s07", "s08", "s09", "s11"]
 # cameras = ["50591643/", "58860488/", "60457274/", "65906101/"]
