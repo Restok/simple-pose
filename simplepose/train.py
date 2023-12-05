@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision.models import mobilenet_v2
 
-train_data, test_data = get_datasets(reload_data=False)
+train_data, test_data = get_datasets()
 train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=32, shuffle=False)
 sample_frame, sample_label, _ = next(iter(train_loader))
@@ -29,6 +29,12 @@ model.train()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 criterion = torch.nn.MSELoss()
 
+
+#start timing
+import time
+
+start = time.time()
+last_time = start
 for epoch in range(2):
     for i, v in enumerate(train_loader):
         frames, labels, _ = v
@@ -39,8 +45,15 @@ for epoch in range(2):
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
-        if i % 10 == 0:
-            print('Epoch: %d, Iteration: %d, Loss: %f' % (epoch, i, loss.item()))
+        if i % 50 == 0:
+            print('Epoch: %d, Iteration: %d/%d, Loss: %f' % (epoch, i,len(train_loader), loss.item()))
+        if i % 100 == 0:
+            time_elapsed = time.time() - last_time
+            print('Time elapsed: %d seconds' % time_elapsed)
+            last_time = time.time()
+            #estimate time remaining
+            time_remaining = time_elapsed * (len(train_loader) - i)/100
+            print('Estimated time remaining for epoch: %d seconds' % time_remaining)
     #get MSE loss on test set
     with torch.no_grad():
         total_loss = 0
@@ -54,7 +67,7 @@ for epoch in range(2):
         print('Epoch: %d, Test Loss: %f' % (epoch, total_loss / len(test_loader)))
 
 # Save the model checkpoint
-torch.save(model.state_dict(), 'mobilenet_v2_224x224_smplx.pth')
+torch.save(model.state_dict(), 'checkpoints/mobilenet_v2_224x224_smplx.pth')
 
 # Inference with the saved model
 # load model mobilenet_v2_224x224.pth

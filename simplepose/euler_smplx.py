@@ -15,7 +15,7 @@ def rot_mat_to_euler(R):
 subjects = ["s03", "s04", "s05", "s07", "s08", "s09", "s11"]
 # cameras = ["50591643/", "58860488/", "60457274/", "65906101/"]
 
-root = "C:/Users/aaren/Desktop/simple-pose/simplepose/"
+root = "C:/Users/DAQ/Desktop/simple-pose/simplepose/"
 base = root+"data/fit3d_train/train/"
 
 if not os.path.exists("processed"):
