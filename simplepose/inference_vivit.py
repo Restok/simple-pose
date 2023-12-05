@@ -9,7 +9,7 @@ import imageio
 from PIL import Image
 from model.vivit import VivitPose
 from torch.utils.data import DataLoader
-
+from euler_to_rot import euler_to_rotation_matrix_zyz, euler_to_rotation_matrix_zyz_tensor
 device = 'cpu'
 configuration = VivitConfig()
 vivit_num_frames = 3
@@ -46,11 +46,17 @@ with torch.no_grad():
         camera_params = getCameraParams(metadata)
         # print(camera_params)
         image_id = metadata['i']
-        global_orient, body_pose, transl = getSMPLXParams(output.cpu().numpy())
-        smplx_params = {'global_orient': global_orient, 'body_pose': body_pose, 'transl': transl}
-        global_orient, body_pose, transl = getSMPLXParams(sample_label.cpu().numpy())
+        # global_orient, body_pose, transl = getSMPLXParams(output.cpu().numpy())
+        global_orient, body_pose, transl = getSMPLXParams(sample_label.cpu())
+        print(global_orient.shape)
+        print(body_pose.shape)
+        global_orient = euler_to_rotation_matrix_zyz_tensor(global_orient)
+        print(global_orient.shape)
+        print(global_orient)
+        body_pose = euler_to_rotation_matrix_zyz_tensor(body_pose)
+        # smplx_params = {'global_orient': global_orient, 'body_pose': body_pose, 'transl': transl}
         smplx_params_gt = {'global_orient': global_orient, 'body_pose': body_pose, 'transl': transl}
-
+        
         # joined = {**camera_params, **smplx_params}
         camera_smplx_params = smplx_helper.get_world_smplx_params(smplx_params_gt)
         camera_posed_data_smplx = smplx_helper.smplx_model(**camera_smplx_params)
@@ -61,7 +67,6 @@ with torch.no_grad():
         print(sample_frame.squeeze()[-1].cpu().shape)
         rendered_image = smplx_helper.render(vertices,sample_frame.squeeze()[-1].cpu(), camera_params[0], vertices_in_world=True) #tensor
         # rendered_image = rendered_image.cpu().detach().numpy().squeeze()
-
         # rendered_image = (rendered_image*255).astype('uint8')
         gif_frames.append(rendered_image)
         plt.imshow(rendered_image)

@@ -92,11 +92,8 @@ class Fit3DVideo(Dataset):
         frames = []
         frame_path_split = frame_path.split('/')
         subj_name = frame_path_split[1]
-        print(subj_name)
         camera_name = frame_path_split[3]
-        print(camera_name)
         action_name = frame_path_split[4]
-        print(action_name)
         i = int(frame_path_split[5].split('.')[0])
         metadata = {
             'subj_name': subj_name,
@@ -119,7 +116,7 @@ class Fit3DVideo(Dataset):
         
 
         labels = None
-        labels = np.load(f'processed/{subj_name}/smplx/{action_name}.npy')
+        labels = np.load(f'processed/{subj_name}/smplx_mat/{action_name}.npy')
         label = labels[i]
         # print('Loading data took: %d seconds' % (time.time() - start))
         return frames, torch.tensor(label, dtype=torch.float32), metadata

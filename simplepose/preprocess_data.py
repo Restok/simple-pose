@@ -49,9 +49,15 @@ def read_video(vid_path):
 #     return frames, j3ds, smplx
 
 def getSMPLXParams(prediction):
-    global_orient = prediction[:, :3].reshape(-1, 3)
+    global_orient = prediction[:, :3].reshape(-1, 1, 3)
     body_pose = prediction[:, 3:66].reshape(-1, 21, 3)
     transl = prediction[:, 66:69].reshape(-1, 3)
+    return global_orient, body_pose, transl
+
+def getSMPLXParamsMatrix(prediction):
+    global_orient = prediction[:, :9].reshape(-1, 3, 3)
+    body_pose = prediction[:, 9:198].reshape(-1, 21, 3, 3)
+    transl = prediction[:, 198:201].reshape(-1, 3)
     return global_orient, body_pose, transl
 
 def getCameraParams(metadatas):
@@ -96,8 +102,6 @@ def get_video_slices():
     pass
 
 def get_datasets(shuffle=True):
-    # if reload_data:
-    #     load_data(False)
     root = 'processed'
     all_subjects = os.listdir(root)
     all_cameras = os.listdir('%s/%s/videos' % (root, all_subjects[0]))
