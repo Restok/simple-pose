@@ -1,2 +1,5 @@
 MobileNetV3: 19.70782944187522mm
 ViViT-MobileNetV3: 19.609713196754454mm
+Num training images: 1347793
+Num validation images: 149755
+Num: test images: 230792
