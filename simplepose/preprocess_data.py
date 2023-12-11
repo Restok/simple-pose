@@ -6,6 +6,9 @@ from data.Fit3DDataset import Fit3DDataset
 from sklearn.model_selection import train_test_split
 import torch
 from data.Fit3DVideo import Fit3DVideo
+import random
+
+from euler_to_rot import euler_to_rotation_matrix_zyz_tensor
 
 def read_video(vid_path):
     frames = []
@@ -54,7 +57,7 @@ def getSMPLXParams(prediction):
     transl = prediction[:, 66:69].reshape(-1, 3)
     return global_orient, body_pose, transl
 
-def getSMPLXParamsMatrix(prediction):
+def getSMPLXParamsMat(prediction):
     global_orient = prediction[:, :9].reshape(-1, 3, 3)
     body_pose = prediction[:, 9:198].reshape(-1, 21, 3, 3)
     transl = prediction[:, 198:201].reshape(-1, 3)
@@ -101,11 +104,14 @@ def getCameraParams(metadatas):
 def get_video_slices():
     pass
 
-def get_datasets(shuffle=True):
+def get_datasets(shuffle=True, random_state=42):
     root = 'processed'
     all_subjects = os.listdir(root)
+    all_subjects = sorted(all_subjects)
     all_cameras = os.listdir('%s/%s/videos' % (root, all_subjects[0]))
+    all_cameras = sorted(all_cameras)
     all_actions = os.listdir('%s/%s/videos/%s' % (root, all_subjects[0], all_cameras[0]))
+    all_actions = sorted(all_actions)
     frame_paths = []
     for subj_name in all_subjects:
         for camera_name in all_cameras:
@@ -119,16 +125,19 @@ def get_datasets(shuffle=True):
                 if label.shape[0] < 31:
                     continue
                 frame_paths += ['%s/%s/videos/%s/%s/%s' % (root, subj_name, camera_name, action_name, frame) for frame in sorted_frames[31:min(len(sorted_frames),label.shape[0])]]
-    train_frame_paths, test_frame_paths = train_test_split(frame_paths, test_size=0.2, shuffle=shuffle)
+    train_frame_paths, test_frame_paths = train_test_split(frame_paths, test_size=0.1, shuffle=shuffle, random_state=random_state)
     train_dataset = Fit3DDataset(train_frame_paths)
     test_dataset = Fit3DDataset(test_frame_paths)
     return train_dataset, test_dataset
 
-def get_video_datasets(shuffle = True, slice_len=5):
+def get_video_datasets(shuffle = True, slice_len=5, random_state=42):
     root = 'processed'
     all_subjects = os.listdir(root)
+    all_subjects = sorted(all_subjects)
     all_cameras = os.listdir('%s/%s/videos' % (root, all_subjects[0]))
+    all_cameras = sorted(all_cameras)
     all_actions = os.listdir('%s/%s/videos/%s' % (root, all_subjects[0], all_cameras[0]))
+    all_actions = sorted(all_actions)
     frame_paths = []
     for subj_name in all_subjects:
         for camera_name in all_cameras:
@@ -143,7 +152,42 @@ def get_video_datasets(shuffle = True, slice_len=5):
                     continue
                 frame_paths += ['%s/%s/videos/%s/%s/%s' % (root, subj_name, camera_name, action_name, frame) for frame in sorted_frames[(slice_len-1):min(len(sorted_frames),label.shape[0])]]
     
-    train_frame_paths, test_frame_paths = train_test_split(frame_paths, test_size=0.2, shuffle=shuffle)
+    train_frame_paths, test_frame_paths = train_test_split(frame_paths, test_size=0.1, shuffle=shuffle, random_state=random_state)
     train_dataset = Fit3DVideo(train_frame_paths, slice_len=slice_len)
     test_dataset = Fit3DVideo(test_frame_paths,slice_len=slice_len)
     return train_dataset, test_dataset
+
+def get_random_video(euler_gt=False):
+    root = 'data/fit3d_train/train'
+    all_subjects = os.listdir(root)
+    all_subjects = sorted(all_subjects)
+    all_cameras = os.listdir('%s/%s/videos' % (root, all_subjects[0]))
+    all_cameras = sorted(all_cameras)
+    all_actions = os.listdir('%s/%s/videos/%s' % (root, all_subjects[0], all_cameras[0]))
+    random_subject = random.choice(all_subjects)
+    random_camera = random.choice(all_cameras)
+    random_action = random.choice(all_actions)
+    random_video_path = '%s/%s/videos/%s/%s' % (root, random_subject, random_camera, random_action)
+    print(random_video_path)
+    param_path = '%s/%s/camera_parameters/%s/%s.json' % (root, random_subject, random_camera, random_action.split('.')[0])
+    params= None
+    with open(param_path) as f:
+        params = json.load(f)
+    root = 'processed'
+    if euler_gt:
+        labels = np.load('%s/%s/smplx/%s.npy' % (root, random_subject, random_action.split('.')[0]))
+    else:
+        labels = np.load('%s/%s/smplx_mat/%s.npy' % (root, random_subject, random_action.split('.')[0]))
+    
+    return read_video(random_video_path)[:labels.shape[0]], labels, params
+
+
+def euler_output_to_rot_tensor(output):
+    batch_size = output.shape[0]
+    global_orient, body_pose, transl = getSMPLXParams(output)
+    global_orient = euler_to_rotation_matrix_zyz_tensor(global_orient)
+    body_pose = euler_to_rotation_matrix_zyz_tensor(body_pose)
+    global_orient = global_orient.reshape(batch_size, -1)
+    body_pose = body_pose.reshape(batch_size, -1)
+    outputs_rot = torch.cat((global_orient, body_pose, transl), dim=1)
+    return outputs_rot

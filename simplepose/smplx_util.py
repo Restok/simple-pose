@@ -42,6 +42,8 @@ class SMPLXHelper:
         self.Models_Path = Models_Path
         self.cfg = smplx_cfg
         self.smplx_model = build_layer(self.Models_Path, **self.cfg)
+        self.smplx_model.eval()
+        self.smplx_model.requires_grad_(False)
         self.smplx_model = self.smplx_model.to(device)
         self.image_shape = (900, 900)
         if load_renderer:
@@ -85,7 +87,7 @@ class SMPLXHelper:
 
 
 
-    def render(self, vertices, frame, cam_params, vertices_in_world=True, gt_vertices=None):
+    def render(self, vertices, frame, cam_params, vertices_in_world=True, gt_vertices=None, joints=None, color = [0.3, 0.3, 0.3, 1.0]):
         import pyrender
         blending_weight=1.0
         if vertices_in_world:
@@ -96,13 +98,26 @@ class SMPLXHelper:
         intrinsics = cam_params['intrinsics_wo_distortion']['f'] + cam_params['intrinsics_wo_distortion']['c'] 
         background_image = frame
 
-        vertex_colors = np.ones([vertices_to_render.shape[0], 4]) * [0.3, 0.3, 0.3, 1] # gray
+        vertex_colors = np.ones([vertices_to_render.shape[0], 4]) * color # gray
         tri_mesh = trimesh.Trimesh(vertices_to_render, self.smplx_model.faces, 
                                    vertex_colors=vertex_colors) # create mesh
 
         mesh = pyrender.Mesh.from_trimesh(tri_mesh, smooth=True) # create mesh object
         scene = pyrender.Scene(ambient_light=(0.0, 0.0, 0.0)) # create scene
         scene.add(mesh, 'mesh')
+        #joints are 
+        """"""
+        if joints is not None:
+            if vertices_in_world:
+                joints = np.matmul(joints - cam_params['extrinsics']['T'], np.transpose(cam_params['extrinsics']['R']))
+            sm = trimesh.creation.uv_sphere(radius=0.1)
+            #red
+            sm.visual.vertex_colors = [1.0, 0.0, 0.0, 1.0]
+            tfs = np.tile(np.eye(4), (len(joints), 1, 1))
+            tfs[:, :3, 3] = joints
+            joints_pcl = pyrender.Mesh.from_trimesh(sm, poses=tfs)
+            scene.add(joints_pcl)
+
         if gt_vertices is not None:
             vertex_colors = np.ones([gt_vertices.shape[0], 4]) * [0.0, 1.0, 0.0, 1] # green
             tri_mesh = trimesh.Trimesh(gt_vertices, self.smplx_model.faces,

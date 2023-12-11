@@ -38,7 +38,7 @@ class Fit3DDataset(Dataset):
 
             labels = None
             
-            labels = np.load(f'processed/{subj_name}/smplx/{action_name}.npy')
+            labels = np.load(f'processed/{subj_name}/smplx_mat/{action_name}.npy')
             label = labels[i]
             return self.transform(frame), torch.tensor(label, dtype=torch.float32), metadata
         except Exception as e:

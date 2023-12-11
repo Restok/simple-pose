@@ -63,11 +63,46 @@ class VivitTubeletEmbeddings(nn.Module):
         pixel_values = pixel_values.permute(0, 2, 1, 3, 4)
         #get the tensor dtype
         x = self.projection(pixel_values)
+        print("After tubelet embedding: ", x.shape)
         # out_batch_size, out_num_channels, out_num_frames, out_height, out_width = x.shape
         x = self.projection(pixel_values).flatten(2).transpose(1, 2)
         return x
 
+class VivitMobileNetV3Projection(nn.Module):
+    def __init__(self, config):
+        #mobilenetv3
+        super().__init__()
+        self.net = torch.hub.load('pytorch/vision:v0.9.0', 'mobilenet_v3_small', pretrained=True)
+        out_size = config.hidden_size
+        self.net.classifier = nn.Linear(576, out_size)
+    
+    def forward(self, pixel_values):
+        batch_size, num_frames, num_channels, height, width = pixel_values.shape
+        embeddings = torch.zeros(batch_size, num_frames, self.net.classifier.out_features).to(pixel_values.device)
+        for i in range(num_frames):
+            embeddings[:, i, :] = self.net(pixel_values[:, i, :, :, :])
+        return embeddings
 
+class VivitMobileNetEmbeddings(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.projector = VivitMobileNetV3Projection(config)
+        self.position_embeddings = nn.Parameter(
+            torch.zeros(1, config.num_frames+1, config.hidden_size)
+        )
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.config = config
+
+    def forward(self, pixel_values):
+        batch_size, num_frames, num_channels, height, width = pixel_values.shape
+        embeddings = self.projector(pixel_values)
+        cls_tokens = self.cls_token.tile([batch_size, 1, 1])
+        embeddings = torch.cat((cls_tokens, embeddings), dim=1)
+        embeddings = embeddings + self.position_embeddings
+        embeddings = self.dropout(embeddings)
+        return embeddings
+    
 class VivitEmbeddings(nn.Module):
     """
     Vivit Embeddings.
@@ -90,7 +125,7 @@ class VivitEmbeddings(nn.Module):
     def forward(self, pixel_values):
         batch_size = pixel_values.shape[0]
         embeddings = self.patch_embeddings(pixel_values)
-
+        print(embeddings.shape)
         cls_tokens = self.cls_token.tile([batch_size, 1, 1])
 
         embeddings = torch.cat((cls_tokens, embeddings), dim=1)
@@ -435,7 +470,7 @@ class VivitModel(VivitPreTrainedModel):
         super().__init__(config)
         self.config = config
 
-        self.embeddings = VivitEmbeddings(config)
+        self.embeddings = VivitMobileNetEmbeddings(config)
         self.encoder = VivitEncoder(config)
 
         self.layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)

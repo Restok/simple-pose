@@ -87,7 +87,6 @@ class Fit3DVideo(Dataset):
 
     def __getitem__(self, idx):
         slice_len = self.slice_len
-        start = time.time()
         frame_path = self.frame_paths[idx]
         frames = []
         frame_path_split = frame_path.split('/')
